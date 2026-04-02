@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Shortkeys</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <h1>⌨ Shortkeys</h1>
+      </div>
+      <span class="version-badge">v1.0</span>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="mappings">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M14 5a1 1 0 011 1v5a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1h12zM2 4a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H2z"/><path d="M13 10.5a.5.5 0 01.5-.5h1a.5.5 0 010 1h-1a.5.5 0 01-.5-.5zm-9 0a.5.5 0 01.5-.5h1a.5.5 0 010 1h-1a.5.5 0 01-.5-.5zm5 0a.5.5 0 01.5-.5h1a.5.5 0 010 1h-1a.5.5 0 01-.5-.5zm-3 0a.5.5 0 01.5-.5h1a.5.5 0 010 1h-1a.5.5 0 01-.5-.5zM11 7.5a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zm-9 0a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5zm5 0a.5.5 0 01.5-.5h2a.5.5 0 010 1h-2a.5.5 0 01-.5-.5z"/></svg>
+        Bindings
+      </button>
+      <button class="tab-btn" data-tab="sequences">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M0 3.5A.5.5 0 01.5 3h15a.5.5 0 010 1H.5a.5.5 0 01-.5-.5zm0 4A.5.5 0 01.5 7h9a.5.5 0 010 1H.5a.5.5 0 01-.5-.5zm0 4a.5.5 0 01.5-.5h5a.5.5 0 010 1H.5a.5.5 0 01-.5-.5z"/></svg>
+        Sequences
+      </button>
+      <button class="tab-btn" data-tab="import-export">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/><path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.902 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633-.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.766-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.766-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.376l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/></svg>
+        Settings
+      </button>
+    </nav>
+
+    <!-- ═══ Bindings Tab ═══ -->
+    <div class="tab-content active" id="tab-mappings">
+      <div class="section-bar">
+        <p>Map keys to page elements</p>
+        <button id="bind-new-btn" class="btn btn-primary btn-sm">+ New</button>
+      </div>
+
+      <div id="bind-builder" class="builder-panel" style="display:none;">
+        <div class="builder-header">
+          <h3 id="bind-builder-title">New Binding</h3>
+          <button id="bind-builder-close" class="btn-icon" title="Close">✕</button>
+        </div>
+        <div class="builder-body">
+          <div class="field-group">
+            <label class="field-label">Hostname</label>
+            <input type="text" id="bind-hostname-input" class="field-input" placeholder="e.g. github.com" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Trigger Key</label>
+            <div class="field-row">
+              <div id="bind-trigger-display" class="trigger-display">
+                <span class="placeholder-text">Click Capture to set…</span>
+              </div>
+              <button id="bind-capture-trigger" class="btn btn-secondary btn-sm">Capture</button>
+              <button id="bind-clear-trigger" class="btn btn-danger btn-sm" style="display:none;">Clear</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">CSS Selector</label>
+            <div class="field-row">
+              <input type="text" id="bind-selector-input" class="field-input" placeholder="#submit-btn" style="flex:1;" />
+              <button id="bind-pick-btn" class="btn btn-secondary btn-sm" title="Pick from page">⊕ Pick</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;">
+            <div class="field-group" style="flex:2;">
+              <label class="field-label">Name</label>
+              <input type="text" id="bind-label-input" class="field-input" placeholder="e.g. Like Button" />
+            </div>
+            <div class="field-group" style="flex:1;">
+              <label class="field-label" title="How long to wait for the element to appear">Timeout (ms)</label>
+              <input type="number" id="bind-timeout-input" class="field-input" placeholder="8000" />
+            </div>
+          </div>
+        </div>
+        <div class="builder-footer">
+          <button id="bind-save-btn" class="btn btn-primary" style="flex:1;">Save Binding</button>
+        </div>
+      </div>
+
+      <div id="mappings-list"></div>
+    </div>
+
+    <!-- ═══ Sequences Tab ═══ -->
+    <div class="tab-content" id="tab-sequences">
+      <div class="section-bar">
+        <p>Multi-step automations</p>
+        <div style="display:flex;gap:6px;">
+          <button id="seq-import-btn-ui" class="btn btn-secondary btn-sm">Import</button>
+          <input type="file" id="seq-import-file" accept=".json" class="hidden-file-input">
+          <button id="seq-new-btn" class="btn btn-primary btn-sm">+ New</button>
+        </div>
+      </div>
+
+      <div id="seq-builder" class="builder-panel" style="display:none;">
+        <div class="builder-header">
+          <h3 id="seq-builder-title">New Sequence</h3>
+          <button id="seq-builder-close" class="btn-icon" title="Close">✕</button>
+        </div>
+        <div class="builder-body">
+          <div class="field-group">
+            <label class="field-label">Sequence Name</label>
+            <input type="text" id="seq-name-input" class="field-input" placeholder="e.g. Auto-fill login" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Hostname</label>
+            <input type="text" id="seq-hostname-input" class="field-input" placeholder="e.g. example.com" />
+          </div>
+          <div class="field-group">
+            <label class="field-label">Trigger Shortcut</label>
+            <div class="field-row">
+              <div id="seq-trigger-display" class="trigger-display">
+                <span class="placeholder-text">Click Capture to set…</span>
+              </div>
+              <button id="seq-capture-trigger" class="btn btn-secondary btn-sm">Capture</button>
+              <button id="seq-clear-trigger" class="btn btn-danger btn-sm" style="display:none;">Clear</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" title="How long to wait for the first element before giving up">Max Search Timeout (ms)</label>
+            <input type="number" id="seq-timeout-input" class="field-input" placeholder="8000" style="width:120px;" />
+          </div>
+          <div class="steps-area">
+            <div class="steps-header">
+              <label class="field-label">Steps</label>
+              <button id="seq-add-step" class="btn btn-secondary btn-xs">+ Add Step</button>
+            </div>
+            <div id="seq-steps-list" class="steps-list"></div>
+          </div>
+        </div>
+        <div class="builder-footer">
+          <button id="seq-test-btn" class="btn btn-secondary" style="flex:1;">Test Run</button>
+          <button id="seq-save-btn" class="btn btn-primary" style="flex:2;">Save Sequence</button>
+        </div>
+      </div>
+
+      <div id="seq-list" class="seq-list"></div>
+    </div>
+
+    <!-- ═══ Settings Tab ═══ -->
+    <div class="tab-content" id="tab-import-export">
+      
+      <div class="settings-card">
+        <h3>Preferences</h3>
+        <div class="field-group" style="margin-top:12px;">
+          <label class="field-label">Overlay (HUD) Position</label>
+          <select id="settings-hud-pos" class="field-input">
+            <option value="tr">Top Right</option>
+            <option value="tl">Top Left</option>
+            <option value="br">Bottom Right</option>
+            <option value="bl">Bottom Left</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Popup UI Zoom Scale</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input type="range" id="settings-scale" min="0.75" max="1.5" step="0.05" value="1.0" style="flex:1;">
+            <span id="settings-scale-val" style="font-family:monospace;font-size:12px;color:var(--text-dim);width:32px;text-align:right;">1.0x</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card" style="margin-top:16px;">
+        <h3>Backup & Restore</h3>
+        <p class="settings-desc">Export all bindings and sequences to JSON, or import a previous backup.</p>
+        <div class="settings-actions">
+          <button id="export-button" class="btn btn-secondary btn-sm">Export All</button>
+          <button id="import-file-ui" class="btn btn-primary btn-sm">Import JSON</button>
+          <input type="file" id="import-file" accept=".json" class="hidden-file-input" />
+        </div>
+        <div id="import-status" style="margin-top:12px;font-size:12px;color:var(--purple);display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification-container"></div>
+  <script src="popup.js"></script>
+</body>
+</html>
