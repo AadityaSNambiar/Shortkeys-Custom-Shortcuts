@@ -1,1 +1,22 @@
-node_modules/\n.DS_Store\n*.zip
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Data
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Web Extensions Building
+web-ext-artifacts/
