@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/AadityaSNambiar/)
-[![Platform](https://img.shields.io/badge/platform-Chrome%20%7C%20Firefox-orange.svg)](https://github.com/AadityaSNambiar/)
+[![Platform](https://img.shields.io/badge/platform-Firefox-orange.svg)](https://github.com/AadityaSNambiar/)
 
 Shortkeys is a high-performance browser automation engine designed to transform your web experience through intelligent keyboard orchestration. Map complex shortcuts to specific page elements, execute multi-step macros with precision, and navigate cross-page workflows effortlessly.
 
@@ -32,15 +32,9 @@ Shortkeys is a high-performance browser automation engine designed to transform 
 
 ## 🛠 Installation
 
-### 🌐 Google Chrome / Chromium-Based (Brave, Edge, Opera)
-1. **Clone/Download** this repository to your local machine.
-2. Navigate to `chrome://extensions/` in your browser.
-3. Enable **Developer mode** (top right toggle).
-4. Click **Load unpacked** and select the project folder.
-
 ### 🦊 Mozilla Firefox
 1. **Clone/Download** this repository.
-2. Navigate to `about:debugging#/runtime/this-firefox`.
+2. Navigate to `about:debugging#/runtime/this-firefox` in Firefox.
 3. Click **Load Temporary Add-on...**.
 4. Select the `manifest.json` file in the project directory.
 
