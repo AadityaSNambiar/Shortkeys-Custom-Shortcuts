@@ -332,7 +332,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!hosts.length) {
       const emptyStateText = document.createElement("div");
       emptyStateText.className = "empty-state";
-      emptyStateText.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h12"/></svg><p class="empty-title">No bindings yet</p><p class="empty-hint">Click <strong>+ New</strong> above or right-click<br/>any element on a page.</p>`;
+      const emptyTitle = document.createElement("p");
+      emptyTitle.className = "empty-title";
+      emptyTitle.textContent = "No bindings yet";
+      const emptyHint = document.createElement("p");
+      emptyHint.className = "empty-hint";
+      emptyHint.textContent = "Click + New above or right-click any element on a page.";
+      emptyStateText.appendChild(emptyTitle);
+      emptyStateText.appendChild(emptyHint);
       mappingsListDiv.appendChild(emptyStateText);
       return;
     }
@@ -696,7 +703,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hostname: seqHostnameInput.value,
       trigger: currentTrigger,
       timeout: parseInt(seqTimeoutInput.value) || 8000,
-      steps: builderSteps,
+      steps: JSON.parse(JSON.stringify(builderSteps)),
       editingSeqHostname,
       editingSeqIndex
     };
@@ -828,7 +835,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!hosts.length) {
       const emptyStateText = document.createElement("div");
       emptyStateText.className = "empty-state";
-      emptyStateText.innerHTML = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h10M4 18h6"/></svg><p class="empty-title">No sequences yet</p><p class="empty-hint">Click <strong>+ New</strong> to create one.</p>`;
+      const emptyTitle = document.createElement("p");
+      emptyTitle.className = "empty-title";
+      emptyTitle.textContent = "No sequences yet";
+      const emptyHint = document.createElement("p");
+      emptyHint.className = "empty-hint";
+      emptyHint.textContent = "Click + New to create one.";
+      emptyStateText.appendChild(emptyTitle);
+      emptyStateText.appendChild(emptyHint);
       seqList.appendChild(emptyStateText);
       return;
     }
@@ -923,6 +937,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (seqState) {
         switchToTab("sequences");
+        // Deep-copy steps from saved state to prevent reference issues
+        if (seqState.steps) {
+          seqState.steps = JSON.parse(JSON.stringify(seqState.steps));
+        }
         restoreSeqBuilderState(seqState);
         if (result && result.selector && !result.cancelled) {
           const idx = seqState.pickerStepIndex;
@@ -940,11 +958,16 @@ document.addEventListener("DOMContentLoaded", () => {
               builderSteps[idx].name = result.elName.substring(0, 30);
             }
             
-            renderBuilderSteps();
             showNotification(`Selector picked for step ${idx + 1}`);
           }
-          // Auto-add new empty step after picking
-          builderSteps.push({ name: "", selector: "", value: "", action: "click", delay: 0 });
+          // Auto-add a new empty step only if the last step already has a selector
+          const lastStep = builderSteps[builderSteps.length - 1];
+          if (lastStep && lastStep.selector && lastStep.selector.trim()) {
+            builderSteps.push({ name: "", selector: "", value: "", action: "click", delay: 0 });
+          }
+          renderBuilderSteps();
+        } else {
+          // No picker result (user cancelled or escaped) — still render the restored state
           renderBuilderSteps();
         }
         await browser.storage.local.remove([PICKER_STORAGE_KEY, BUILDER_STATE_KEY]);

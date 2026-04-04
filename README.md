@@ -64,3 +64,4 @@ Shortkeys is built with a **Privacy-First** architecture:
 Contributions are welcome! Feel free to open an issue or submit a pull request if you have ideas for new action types or performance optimizations.
 
 Distributed under the **MIT License**. Created with 💜 by [Aaditya Nambiar](https://github.com/AadityaSNambiar/).
+# Shortkeys-Custom-Shortcuts

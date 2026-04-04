@@ -4,6 +4,39 @@
    cross-page resume, and right-click context menu integration.
    =================================================================== */
 
+// ─── DOM Utilities (Shadow DOM support) ──────────────────────────
+
+function querySelectorDeep(selector, root = document) {
+  if (selector.startsWith("shadow:")) {
+    const parts = selector.substring(7).split("|||");
+    let currentRoot = root;
+    let found = null;
+    for (let i = 0; i < parts.length; i++) {
+        found = currentRoot.querySelector(parts[i]);
+        if (!found) return null;
+        if (i < parts.length - 1) {
+            if (!found.shadowRoot) return null;
+            currentRoot = found.shadowRoot;
+        }
+    }
+    return found;
+  }
+
+  try {
+    const direct = root.querySelector(selector);
+    if (direct) return direct;
+  } catch(e) {}
+  
+  const all = root.querySelectorAll('*');
+  for (let i = 0; i < all.length; i++) {
+    if (all[i].shadowRoot) {
+      const match = querySelectorDeep(selector, all[i].shadowRoot);
+      if (match) return match;
+    }
+  }
+  return null;
+}
+
 let isPicking = false;
 let hoverOverlay = null;
 let hoverLabel = null;
@@ -39,7 +72,6 @@ function getElementDescription(el) {
     ? "." + el.className.trim().split(/\s+/).slice(0, 2).join(".")
     : "";
   let text = "";
-  // readable text
   if (el.getAttribute("aria-label")) text = el.getAttribute("aria-label");
   else if (el.getAttribute("placeholder")) text = el.getAttribute("placeholder");
   else if (el.getAttribute("title")) text = el.getAttribute("title");
@@ -58,7 +90,7 @@ function getElementType(el) {
     if (["text","email","password","search","url","tel","number","date","datetime-local","month","week","time","color"].includes(t))
       return "input";
     if (t === "checkbox" || t === "radio") return "click";
-    return "click"; // submit, button, etc
+    return "click";
   }
   if (tag === "textarea" || tag === "select" || el.isContentEditable) return "input";
   return "click";
@@ -66,29 +98,94 @@ function getElementType(el) {
 
 function getCssSelector(el) {
   if (!(el instanceof Element)) return "";
-  const path = [];
-  while (el && el.nodeType === Node.ELEMENT_NODE) {
-    let selector = el.nodeName.toLowerCase();
-    if (el.id) {
-      selector += "#" + CSS.escape(el.id);
-      path.unshift(selector);
-      break;
-    } else {
-      let sib = el, nth = 1;
-      while ((sib = sib.previousElementSibling)) {
-        if (sib.nodeName.toLowerCase() === el.nodeName.toLowerCase()) nth++;
-      }
-      if (nth !== 1) selector += `:nth-of-type(${nth})`;
-    }
-    path.unshift(selector);
-    el = el.parentNode;
+
+  function testSelector(sel) {
+      try { return querySelectorDeep(sel) === el; } catch(e) { return false; }
   }
-  return path.join(" > ");
+
+  function buildPath(useClasses, ignoreIds) {
+    let parts = [];
+    let currentElement = el;
+    while (currentElement) {
+      let path = [];
+      let current = currentElement;
+      while (current && current.nodeType === Node.ELEMENT_NODE) {
+        let sel = current.nodeName.toLowerCase();
+        let hasGoodId = !ignoreIds && current.id && !/^[0-9\-_]/.test(current.id) && !/\d/.test(current.id);
+
+        if (hasGoodId) {
+          sel += "#" + CSS.escape(current.id);
+        }
+
+        if (useClasses && !hasGoodId && current.className && typeof current.className === "string") {
+          let classes = current.className.trim().split(/\s+/).filter(c => !/\d/.test(c)).slice(0, 3);
+          classes.forEach(function(c) { sel += "." + CSS.escape(c); });
+        }
+
+        if (!hasGoodId) {
+          let sib = current, nth = 1;
+          while ((sib = sib.previousElementSibling)) {
+            if (sib.nodeName.toLowerCase() === current.nodeName.toLowerCase()) nth++;
+          }
+          sel += ":nth-of-type(" + nth + ")";
+        }
+
+        path.unshift(sel);
+
+        if (hasGoodId) break;
+        current = current.parentNode;
+      }
+      parts.unshift(path.join(" > "));
+
+      let rootNode = currentElement.getRootNode();
+      if (rootNode && rootNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE && rootNode.host) {
+        currentElement = rootNode.host;
+      } else {
+        currentElement = null;
+      }
+    }
+    return "shadow:" + parts.join("|||");
+  }
+
+  let cand1 = buildPath(false, false);
+  if (testSelector(cand1)) return cand1;
+
+  let cand2 = buildPath(true, false);
+  if (testSelector(cand2)) return cand2;
+
+  let cand3 = buildPath(false, true); // Ultimate structural fallback (no classes, no IDs at all)
+  if (testSelector(cand3)) return cand3;
+
+  // Strategy 3: Stamp the element with a unique data attribute (transient)
+  if (el.getAttribute("data-sk-id")) {
+    return "[data-sk-id=\"" + CSS.escape(el.getAttribute("data-sk-id")) + "\"]";
+  }
+  let uid = "sk-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 7);
+  el.setAttribute("data-sk-id", uid);
+  return "[data-sk-id=\"" + CSS.escape(uid) + "\"]";
+}
+
+function getInteractiveTarget(initialTarget, e) {
+  if (e.composedPath) {
+    const path = e.composedPath();
+    for (let i = 0; i < path.length; i++) {
+      let el = path[i];
+      if (el && el.nodeType === Node.ELEMENT_NODE) {
+        let tag = el.nodeName.toLowerCase();
+        if (tag === "body" || tag === "main" || tag === "article" || tag === "section") break;
+        if (tag === "button" || tag === "a" || tag === "input" || tag === "select" || tag === "textarea" || tag.includes("button") || el.getAttribute("role") === "button" || el.getAttribute("role") === "link") {
+          return el;
+        }
+      }
+    }
+  }
+  return initialTarget;
 }
 
 const mouseMoveHandler = (e) => {
   if (!isPicking) return;
-  const target = document.elementFromPoint(e.clientX, e.clientY);
+  let target = (e.composedPath && e.composedPath().length > 0) ? e.composedPath()[0] : document.elementFromPoint(e.clientX, e.clientY);
+  target = getInteractiveTarget(target, e);
   if (!target || target === hoverOverlay || target === hoverLabel) return;
 
   const rect = target.getBoundingClientRect();
@@ -113,7 +210,8 @@ const clickHandler = async (e) => {
   e.stopPropagation();
   e.stopImmediatePropagation();
 
-  const target = document.elementFromPoint(e.clientX, e.clientY);
+  let target = (e.composedPath && e.composedPath().length > 0) ? e.composedPath()[0] : document.elementFromPoint(e.clientX, e.clientY);
+  target = getInteractiveTarget(target, e);
   if (!target || target === hoverOverlay || target === hoverLabel) return;
 
   const selector = getCssSelector(target);
@@ -158,7 +256,7 @@ browser.runtime.onMessage.addListener((message) => {
     return Promise.resolve({ success: true });
   }
   if (message.action === "runSingleBinding") {
-    const el = document.querySelector(message.binding.selector);
+    const el = querySelectorDeep(message.binding.selector);
     if (el) {
       showExecutionHUD(`Binding: ${message.binding.label || message.binding.key}`, message.binding.selector);
       simulateSolidClick(el);
@@ -176,9 +274,11 @@ browser.runtime.onMessage.addListener((message) => {
 // ─── Context Menu integration ────────────────────────────────────
 
 document.addEventListener("contextmenu", (e) => {
-  const selector = getCssSelector(e.target);
-  const elType = getElementType(e.target);
-  const elName = getElementDescription(e.target);
+  let target = (e.composedPath && e.composedPath().length > 0) ? e.composedPath()[0] : e.target;
+  target = getInteractiveTarget(target, e);
+  const selector = getCssSelector(target);
+  const elType = getElementType(target);
+  const elName = getElementDescription(target);
   browser.storage.local.set({
     __shortkeys_last_context_selector: selector,
     __shortkeys_last_context_type: elType,
@@ -194,7 +294,7 @@ function showCaptureOverlay(selector, elName, hostname) {
   removeCaptureOverlay();
 
   // Highlight the target element
-  const targetEl = document.querySelector(selector);
+  const targetEl = querySelectorDeep(selector);
   if (targetEl) {
     targetEl.style.outline = "2px solid #7c3aed";
     targetEl.style.outlineOffset = "2px";
@@ -210,38 +310,72 @@ function showCaptureOverlay(selector, elName, hostname) {
 
   const card = document.createElement("div");
   Object.assign(card.style, {
-    background: "#1a1a1f", border: "1px solid #2e2e36", borderRadius: "12px",
-    padding: "24px 28px", maxWidth: "360px", width: "90%",
+    background: "#1a1a1f", border: "1px solid #2e2e36", borderRadius: "14px",
+    padding: "30px 34px", maxWidth: "440px", width: "90%",
     boxShadow: "0 20px 60px rgba(0,0,0,0.8)", color: "#eaeaed",
     textAlign: "center"
   });
 
-  card.innerHTML = `
-    <div style="font-size:18px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,#7c3aed,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">⌨ Shortkeys</div>
-    <div style="font-size:11px;color:#5a5a65;margin-bottom:16px;">Assign a shortcut to this element</div>
-    <div style="background:#222228;border:1px solid #2e2e36;border-radius:8px;padding:10px 14px;margin-bottom:16px;text-align:left;">
-      <div style="font-size:10px;color:#5a5a65;text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-bottom:4px;">Element</div>
-      <div style="font-size:12px;color:#8b8b96;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="sk-cap-elname"></div>
-    </div>
-    <div id="sk-cap-prompt" style="background:#16161b;border:2px solid #7c3aed;border-radius:8px;padding:18px;margin-bottom:16px;box-shadow:0 0 0 3px rgba(124,58,237,0.25);">
-      <div style="font-size:13px;color:#8b5cf6;font-weight:500;animation:pulse 1.5s infinite;" id="sk-cap-text">Press your shortcut key…</div>
-      <div id="sk-cap-badge" style="margin-top:8px;display:none;"></div>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:center;">
-      <button id="sk-cap-cancel" style="background:#222228;border:1px solid #2e2e36;color:#8b8b96;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;">Cancel</button>
-      <button id="sk-cap-save" style="background:#7c3aed;border:none;color:white;padding:7px 20px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:none;">Save Binding</button>
-    </div>
-  `;
-  card.querySelector("#sk-cap-elname").textContent = elName || selector;
+  // ── Title ──
+  const titleDiv = document.createElement("div");
+  Object.assign(titleDiv.style, { fontSize: "24px", fontWeight: "700", marginBottom: "8px", background: "linear-gradient(135deg,#7c3aed,#a78bfa)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent" });
+  titleDiv.textContent = "\u2328 Shortkeys";
+  card.appendChild(titleDiv);
+
+  const subtitleDiv = document.createElement("div");
+  Object.assign(subtitleDiv.style, { fontSize: "14px", color: "#5a5a65", marginBottom: "20px" });
+  subtitleDiv.textContent = "Assign a shortcut to this element";
+  card.appendChild(subtitleDiv);
+
+  // ── Element info ──
+  const elInfoBox = document.createElement("div");
+  Object.assign(elInfoBox.style, { background: "#222228", border: "1px solid #2e2e36", borderRadius: "8px", padding: "12px 16px", marginBottom: "20px", textAlign: "left" });
+  const elLabel = document.createElement("div");
+  Object.assign(elLabel.style, { fontSize: "12px", color: "#5a5a65", textTransform: "uppercase", fontWeight: "600", letterSpacing: ".5px", marginBottom: "6px" });
+  elLabel.textContent = "Element";
+  elInfoBox.appendChild(elLabel);
+  const elNameDiv = document.createElement("div");
+  elNameDiv.id = "sk-cap-elname";
+  Object.assign(elNameDiv.style, { fontSize: "14px", color: "#8b8b96", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" });
+  elNameDiv.textContent = elName || selector;
+  elInfoBox.appendChild(elNameDiv);
+  card.appendChild(elInfoBox);
+
+  // ── Prompt area ──
+  const promptBox = document.createElement("div");
+  promptBox.id = "sk-cap-prompt";
+  Object.assign(promptBox.style, { background: "#16161b", border: "2px solid #7c3aed", borderRadius: "8px", padding: "22px", marginBottom: "20px", boxShadow: "0 0 0 3px rgba(124,58,237,0.25)" });
+  const promptText = document.createElement("div");
+  promptText.id = "sk-cap-text";
+  Object.assign(promptText.style, { fontSize: "16px", color: "#8b5cf6", fontWeight: "500" });
+  promptText.textContent = "Press your shortcut key\u2026";
+  promptBox.appendChild(promptText);
+  const badgeArea = document.createElement("div");
+  badgeArea.id = "sk-cap-badge";
+  Object.assign(badgeArea.style, { marginTop: "10px", display: "none" });
+  promptBox.appendChild(badgeArea);
+  card.appendChild(promptBox);
+
+  // ── Buttons ──
+  const btnRow = document.createElement("div");
+  Object.assign(btnRow.style, { display: "flex", gap: "10px", justifyContent: "center" });
+  const cancelBtn = document.createElement("button");
+  cancelBtn.id = "sk-cap-cancel";
+  Object.assign(cancelBtn.style, { background: "#222228", border: "1px solid #2e2e36", color: "#8b8b96", padding: "10px 22px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontFamily: "inherit" });
+  cancelBtn.textContent = "Cancel";
+  btnRow.appendChild(cancelBtn);
+  const saveBtn = document.createElement("button");
+  saveBtn.id = "sk-cap-save";
+  Object.assign(saveBtn.style, { background: "#7c3aed", border: "none", color: "white", padding: "10px 26px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600", fontFamily: "inherit", display: "none" });
+  saveBtn.textContent = "Save Binding";
+  btnRow.appendChild(saveBtn);
+  card.appendChild(btnRow);
 
   captureOverlayEl.appendChild(card);
   document.documentElement.appendChild(captureOverlayEl);
 
   let capturedCombo = "";
-  const promptText = card.querySelector("#sk-cap-text");
-  const badgeArea = card.querySelector("#sk-cap-badge");
-  const saveBtn = card.querySelector("#sk-cap-save");
-  const cancelBtn = card.querySelector("#sk-cap-cancel");
+  // promptText, badgeArea, saveBtn, cancelBtn already declared above via createElement
 
   const capKeyHandler = (e) => {
     e.preventDefault();
@@ -271,7 +405,7 @@ function showCaptureOverlay(selector, elName, hostname) {
     promptText.style.color = "#4ade80";
     badgeArea.style.display = "flex";
     badgeArea.style.justifyContent = "center";
-    badgeArea.innerHTML = "";
+    badgeArea.textContent = "";
 
     const formatParts = capturedCombo.split("+").map(p => {
       if (p === "ctrl") return "Ctrl";
@@ -284,7 +418,7 @@ function showCaptureOverlay(selector, elName, hostname) {
       const span = document.createElement("span");
       Object.assign(span.style, {
         background: "linear-gradient(180deg,#3a3a42,#2a2a32)", border: "1px solid #4a4a52",
-        borderRadius: "4px", padding: "3px 8px", fontSize: "12px", fontFamily: "monospace",
+        borderRadius: "5px", padding: "4px 10px", fontSize: "15px", fontFamily: "monospace",
         fontWeight: "700", color: "#eaeaed", boxShadow: "0 2px 0 #1a1a22"
       });
       span.textContent = p;
@@ -293,7 +427,8 @@ function showCaptureOverlay(selector, elName, hostname) {
         const plus = document.createElement("span");
         plus.textContent = " + ";
         plus.style.color = "#5a5a65";
-        plus.style.margin = "0 2px";
+        plus.style.margin = "0 3px";
+        plus.style.fontSize = "14px";
         badgeArea.appendChild(plus);
       }
     });
@@ -406,7 +541,7 @@ document.addEventListener("keydown", async (e) => {
         fired = true;
         break;
       }
-      const el = document.querySelector(c.selector);
+      const el = querySelectorDeep(c.selector);
       if (el) {
         if (c.type === "binding") {
           showExecutionHUD(`Binding: ${c.binding.label || c.binding.key}`, c.selector);
@@ -426,7 +561,7 @@ document.addEventListener("keydown", async (e) => {
       const poll = setInterval(() => {
         for (const c of candidates) {
           if (!c.selector) continue;
-          const el = document.querySelector(c.selector);
+          const el = querySelectorDeep(c.selector);
           if (el) {
             clearInterval(poll);
             if (c.type === "binding") {
@@ -486,15 +621,6 @@ async function showExecutionHUD(title, subtitle, progressPercent = null) {
     const lf = pos.includes("l") ? "20px" : "auto";
     const rt = pos.includes("r") ? "20px" : "auto";
 
-    let pbHtml = "";
-    if (progressPercent !== null) {
-      pbHtml = `
-        <div style="margin-top:8px;background:rgba(255,255,255,0.1);height:4px;border-radius:2px;overflow:hidden;">
-          <div style="width:${progressPercent}%;background:#7c3aed;height:100%;transition:width 0.2s ease;"></div>
-        </div>
-      `;
-    }
-
     Object.assign(execToastEl.style, {
       position: "fixed", top: tp, bottom: bt, left: lf, right: rt, zIndex: "2147483647",
       background: "rgba(20, 20, 25, 0.95)", border: "1px solid #2e2e36", color: "#eaeaed",
@@ -505,14 +631,28 @@ async function showExecutionHUD(title, subtitle, progressPercent = null) {
       pointerEvents: "none", minWidth: "220px", display: "block"
     });
 
-    execToastEl.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
-        <span style="font-size:14px;background:linear-gradient(135deg,#7c3aed,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;">⌨</span>
-        <span id="sk-toast-title" style="font-size:12px;font-weight:600;color:#fff;"></span>
-      </div>
-      <div id="sk-toast-subtitle" style="font-size:11px;color:#8b8b96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
-      <div id="sk-toast-pb-container"></div>
-    `;
+    execToastEl.textContent = "";
+
+    const toastHeader = document.createElement("div");
+    Object.assign(toastHeader.style, { display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" });
+    const toastIcon = document.createElement("span");
+    Object.assign(toastIcon.style, { fontSize: "14px", background: "linear-gradient(135deg,#7c3aed,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontWeight: "700" });
+    toastIcon.textContent = "\u2328";
+    toastHeader.appendChild(toastIcon);
+    const toastTitle = document.createElement("span");
+    toastTitle.id = "sk-toast-title";
+    Object.assign(toastTitle.style, { fontSize: "12px", fontWeight: "600", color: "#fff" });
+    toastHeader.appendChild(toastTitle);
+    execToastEl.appendChild(toastHeader);
+
+    const toastSubtitle = document.createElement("div");
+    toastSubtitle.id = "sk-toast-subtitle";
+    Object.assign(toastSubtitle.style, { fontSize: "11px", color: "#8b8b96", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" });
+    execToastEl.appendChild(toastSubtitle);
+
+    const toastPbContainer = document.createElement("div");
+    toastPbContainer.id = "sk-toast-pb-container";
+    execToastEl.appendChild(toastPbContainer);
     
     execToastEl.querySelector("#sk-toast-title").textContent = title;
     execToastEl.querySelector("#sk-toast-subtitle").textContent = subtitle;
@@ -649,14 +789,20 @@ async function runSequence(seq, startIndex = 0) {
 
 function waitForElement(selector, timeout) {
   return new Promise((resolve) => {
-    const existing = document.querySelector(selector);
+    const existing = querySelectorDeep(selector);
     if (existing) return resolve(existing);
-    const observer = new MutationObserver(() => {
-      const el = document.querySelector(selector);
-      if (el) { observer.disconnect(); resolve(el); }
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    setTimeout(() => { observer.disconnect(); resolve(null); }, timeout);
+    
+    const start = Date.now();
+    const poll = setInterval(() => {
+      const el = querySelectorDeep(selector);
+      if (el) {
+        clearInterval(poll);
+        resolve(el);
+      } else if (Date.now() - start > timeout) {
+        clearInterval(poll);
+        resolve(null);
+      }
+    }, 150);
   });
 }
 
