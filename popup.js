@@ -11,6 +11,19 @@ document.addEventListener("DOMContentLoaded", () => {
     close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
   };
 
+  // Safe SVG icon injector — avoids innerHTML by using DOMParser
+  const _svgParser = new DOMParser();
+  function setIcon(el, svgStr) {
+    const doc = _svgParser.parseFromString(svgStr, "image/svg+xml");
+    const svg = doc.documentElement;
+    el.textContent = "";
+    el.appendChild(document.importNode(svg, true));
+  }
+  function setIconWithText(el, svgStr, text) {
+    setIcon(el, svgStr);
+    el.appendChild(document.createTextNode(" " + text));
+  }
+
   // ═══════════════════════════════════════════════════════════════
   //  DOM REFS
   // ═══════════════════════════════════════════════════════════════
@@ -423,7 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const playBtn = document.createElement("button");
         playBtn.className = "btn-icon";
         playBtn.title = "Play";
-        playBtn.innerHTML = ICONS.play;
+        setIcon(playBtn, ICONS.play);
         playBtn.style.color = "var(--purple)";
         playBtn.addEventListener("click", async () => {
           try {
@@ -439,7 +452,7 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(playBtn);
 
         const exportBtn = document.createElement("button");
-        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; exportBtn.innerHTML = ICONS.export;
+        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; setIcon(exportBtn, ICONS.export);
         exportBtn.addEventListener("click", () => {
           const blob = new Blob([JSON.stringify({ [host]: [m] }, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
@@ -452,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const editBtn = document.createElement("button");
         editBtn.className = "btn-icon";
         editBtn.title = "Edit";
-        editBtn.innerHTML = ICONS.edit;
+        setIcon(editBtn, ICONS.edit);
         editBtn.addEventListener("click", () => {
           openBindBuilder(host, m.key, m.selector, m.label || "", m.timeout || 8000, host, idx);
         });
@@ -461,7 +474,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const delBtn = document.createElement("button");
         delBtn.className = "btn-icon";
         delBtn.title = "Delete";
-        delBtn.innerHTML = ICONS.trash;
+        setIcon(delBtn, ICONS.trash);
         delBtn.style.color = "var(--red)";
         delBtn.addEventListener("click", async () => {
           allMappings[host].splice(idx, 1);
@@ -636,23 +649,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (i > 0) {
         const upBtn = document.createElement("button");
-        upBtn.className = "btn-icon"; upBtn.title = "Move up"; upBtn.innerHTML = ICONS.up;
+        upBtn.className = "btn-icon"; upBtn.title = "Move up"; setIcon(upBtn, ICONS.up);
         upBtn.addEventListener("click", () => { syncStepInputs(); [builderSteps[i - 1], builderSteps[i]] = [builderSteps[i], builderSteps[i - 1]]; renderBuilderSteps(); });
         actions.appendChild(upBtn);
       }
       if (i < builderSteps.length - 1) {
         const downBtn = document.createElement("button");
-        downBtn.className = "btn-icon"; downBtn.title = "Move down"; downBtn.innerHTML = ICONS.down;
+        downBtn.className = "btn-icon"; downBtn.title = "Move down"; setIcon(downBtn, ICONS.down);
         downBtn.addEventListener("click", () => { syncStepInputs(); [builderSteps[i], builderSteps[i + 1]] = [builderSteps[i + 1], builderSteps[i]]; renderBuilderSteps(); });
         actions.appendChild(downBtn);
       }
       const dupBtn = document.createElement("button");
-      dupBtn.className = "btn-icon"; dupBtn.title = "Duplicate"; dupBtn.innerHTML = ICONS.copy;
+      dupBtn.className = "btn-icon"; dupBtn.title = "Duplicate"; setIcon(dupBtn, ICONS.copy);
       dupBtn.addEventListener("click", () => { syncStepInputs(); builderSteps.splice(i + 1, 0, JSON.parse(JSON.stringify(builderSteps[i]))); renderBuilderSteps(); });
       actions.appendChild(dupBtn);
 
       const delBtn = document.createElement("button");
-      delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.innerHTML = ICONS.trash;
+      delBtn.className = "btn-icon"; delBtn.title = "Delete"; setIcon(delBtn, ICONS.trash);
       delBtn.style.color = "var(--red)";
       delBtn.addEventListener("click", () => { syncStepInputs(); builderSteps.splice(i, 1); renderBuilderSteps(); });
       actions.appendChild(delBtn);
@@ -704,7 +717,7 @@ document.addEventListener("DOMContentLoaded", () => {
         selRow.appendChild(selInput);
         const pickBtn = document.createElement("button");
         pickBtn.className = "btn btn-secondary btn-xs";
-        pickBtn.innerHTML = ICONS.pick + " Pick";
+        setIconWithText(pickBtn, ICONS.pick, "Pick");
         pickBtn.addEventListener("click", async () => {
           syncStepInputs();
           const state = getSeqBuilderState();
@@ -957,7 +970,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const playBtn = document.createElement("button");
         playBtn.className = "btn-icon";
         playBtn.title = "Play";
-        playBtn.innerHTML = ICONS.play;
+        setIcon(playBtn, ICONS.play);
         playBtn.style.color = "var(--purple)";
         playBtn.addEventListener("click", async () => {
           try {
@@ -974,7 +987,7 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(playBtn);
 
         const exportBtn = document.createElement("button");
-        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; exportBtn.innerHTML = ICONS.export;
+        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; setIcon(exportBtn, ICONS.export);
         exportBtn.addEventListener("click", () => {
           const blob = new Blob([JSON.stringify({ [host]: [seq] }, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
@@ -985,12 +998,12 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(exportBtn);
 
         const editBtn = document.createElement("button");
-        editBtn.className = "btn-icon"; editBtn.title = "Edit"; editBtn.innerHTML = ICONS.edit;
+        editBtn.className = "btn-icon"; editBtn.title = "Edit"; setIcon(editBtn, ICONS.edit);
         editBtn.addEventListener("click", () => openSeqBuilder(host, idx));
         actions.appendChild(editBtn);
 
         const delBtn = document.createElement("button");
-        delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.innerHTML = ICONS.trash;
+        delBtn.className = "btn-icon"; delBtn.title = "Delete"; setIcon(delBtn, ICONS.trash);
         delBtn.style.color = "var(--red)";
         delBtn.addEventListener("click", async () => {
           allSequences[host].splice(idx, 1);
