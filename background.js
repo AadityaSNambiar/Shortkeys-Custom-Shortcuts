@@ -32,12 +32,14 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
     ]);
     if (data.__shortkeys_last_context_selector) {
       // Show the on-page capture overlay directly
-      browser.tabs.sendMessage(tab.id, {
-        action: "showCaptureOverlay",
-        selector: data.__shortkeys_last_context_selector,
-        elName: data.__shortkeys_last_context_name || "",
-        hostname: new URL(tab.url).hostname
-      });
+        let parsedUrl = new URL(tab.url);
+        let h = parsedUrl.hostname || 'local';
+        browser.tabs.sendMessage(tab.id, {
+          action: "showCaptureOverlay",
+          selector: data.__shortkeys_last_context_selector,
+          elName: data.__shortkeys_last_context_name || "",
+          hostname: h
+        });
     }
   }
 });
@@ -68,5 +70,12 @@ browser.runtime.onMessage.addListener((message, sender) => {
       }
     }
     return Promise.resolve(null);
+  }
+
+  if (message.action === "navigateTab") {
+    if (sender.tab && sender.tab.id) {
+      browser.tabs.update(sender.tab.id, { url: message.url });
+    }
+    return Promise.resolve(true);
   }
 });

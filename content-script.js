@@ -488,7 +488,7 @@ document.addEventListener("keydown", async (e) => {
   parts.push(key);
   const combo = parts.join("+");
 
-  const host = window.location.hostname;
+  const host = window.location.hostname || 'local';
 
   try {
     const data = await browser.storage.local.get([host, "__shortkeys_sequences__"]);
@@ -677,7 +677,7 @@ async function showExecutionHUD(title, subtitle, progressPercent = null) {
 
 // ─── Sequence runner (expanded actions) ──────────────────────────
 
-async function runSequence(seq, startIndex = 0) {
+async function runSequence(seq, startIndex = 0, originalHostname = (window.location.hostname || 'local')) {
   const steps = seq.steps;
   if (!steps || steps.length === 0) return;
 
@@ -691,17 +691,6 @@ async function runSequence(seq, startIndex = 0) {
       ((i + 1) / steps.length) * 100
     );
 
-    // Report progress for cross-page resume
-    try {
-      await browser.runtime.sendMessage({
-        action: "reportSequenceNextIndex",
-        hostname: window.location.hostname,
-        seqName: seq.name || "",
-        seqTrigger: seq.trigger || "",
-        nextIndex: i + 1
-      });
-    } catch(e) {}
-
     // Pre-execution delay
     if (step.delay && step.delay > 0) {
       await new Promise(r => setTimeout(r, step.delay));
@@ -709,11 +698,29 @@ async function runSequence(seq, startIndex = 0) {
 
     // Actions that don't require a selector
     if (action === "wait") {
+      try {
+        await browser.runtime.sendMessage({
+          action: "reportSequenceNextIndex",
+          hostname: originalHostname,
+          seqName: seq.name || "",
+          seqTrigger: seq.trigger || "",
+          nextIndex: i + 1
+        });
+      } catch(e) {}
       await new Promise(r => setTimeout(r, parseInt(step.value) || 1000));
       continue;
     }
     if (action === "navigate") {
-      window.location.href = step.value || "";
+      try {
+        await browser.runtime.sendMessage({
+          action: "reportSequenceNextIndex",
+          hostname: originalHostname,
+          seqName: seq.name || "",
+          seqTrigger: seq.trigger || "",
+          nextIndex: i + 1
+        });
+      } catch(e) {}
+      browser.runtime.sendMessage({ action: "navigateTab", url: step.value || "" });
       return; // page will reload, background.js handles resume
     }
 
@@ -723,6 +730,18 @@ async function runSequence(seq, startIndex = 0) {
       console.warn(`Shortkeys: Step ${i + 1} failed — element not found: ${step.selector}`);
       return;
     }
+
+    // Report progress for cross-page resume ONLY AFTER we have confirmed the element exists.
+    // This prevents the nextIndex from incrementing if the page is unloading and we are stuck waiting for an element that doesn't exist here.
+    try {
+      await browser.runtime.sendMessage({
+        action: "reportSequenceNextIndex",
+        hostname: originalHostname,
+        seqName: seq.name || "",
+        seqTrigger: seq.trigger || "",
+        nextIndex: i + 1
+      });
+    } catch(e) {}
 
     switch (action) {
       case "click":
@@ -817,7 +836,7 @@ async function checkForRunningSequence() {
       const hostSeq = allSeq[activeData.hostname] || [];
       let seq = hostSeq.find(s => s.trigger === activeData.seqTrigger);
       if (!seq && hostSeq.length > 0) seq = hostSeq[0];
-      if (seq) runSequence(seq, activeData.nextIndex);
+      if (seq) runSequence(seq, activeData.nextIndex, activeData.hostname);
     }
   } catch (e) {}
 }

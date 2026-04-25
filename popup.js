@@ -1,4 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const ICONS = {
+    play: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>',
+    edit: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+    trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+    export: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>',
+    up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>',
+    down: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>',
+    copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+    pick: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>',
+    close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+  };
+
   // ═══════════════════════════════════════════════════════════════
   //  DOM REFS
   // ═══════════════════════════════════════════════════════════════
@@ -16,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const seqTriggerDisplay = document.getElementById("seq-trigger-display");
   const seqCaptureTrigger = document.getElementById("seq-capture-trigger");
   const seqClearTrigger = document.getElementById("seq-clear-trigger");
-  const seqAddStep = document.getElementById("seq-add-step");
   const seqStepsList = document.getElementById("seq-steps-list");
   const seqSaveBtn = document.getElementById("seq-save-btn");
   const seqTestBtn = document.getElementById("seq-test-btn");
@@ -27,6 +38,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const settingsHudPos = document.getElementById("settings-hud-pos");
   const settingsScale = document.getElementById("settings-scale");
   const settingsScaleVal = document.getElementById("settings-scale-val");
+  const settingsFontScale = document.getElementById("settings-font-scale");
+  const settingsFontScaleVal = document.getElementById("settings-font-scale-val");
+  const settingsIconScale = document.getElementById("settings-icon-scale");
+  const settingsIconScaleVal = document.getElementById("settings-icon-scale-val");
 
   const bindNewBtn = document.getElementById("bind-new-btn");
   const bindBuilder = document.getElementById("bind-builder");
@@ -261,7 +276,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let host = "";
     try {
       const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.url) host = new URL(tabs[0].url).hostname;
+      if (tabs[0]?.url) {
+        let u = new URL(tabs[0].url);
+        host = u.hostname || 'local';
+      }
     } catch (e) {}
     openBindBuilder(host);
   });
@@ -373,9 +391,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const content = document.createElement("div");
         content.className = "mapping-content";
-        const lbl = document.createElement("div");
+        const lbl = document.createElement("input");
+        lbl.type = "text";
         lbl.className = "mapping-label" + (m.label ? "" : " dim");
-        lbl.textContent = m.label || "No label";
+        lbl.value = m.label || "";
+        lbl.placeholder = "No label";
+        lbl.style.border = "none";
+        lbl.style.background = "transparent";
+        lbl.style.fontFamily = "inherit";
+        lbl.style.fontSize = "inherit";
+        lbl.style.fontWeight = "inherit";
+        lbl.style.color = "inherit";
+        lbl.style.width = "100%";
+        lbl.style.outline = "none";
+        lbl.addEventListener("change", async (e) => {
+          m.label = e.target.value.trim();
+          await browser.storage.local.set({ [host]: allMappings[host] });
+          if (m.label) lbl.classList.remove("dim");
+          else lbl.classList.add("dim");
+        });
         content.appendChild(lbl);
         const sel = document.createElement("div");
         sel.className = "mapping-selector";
@@ -389,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const playBtn = document.createElement("button");
         playBtn.className = "btn-icon";
         playBtn.title = "Play";
-        playBtn.textContent = "▶";
+        playBtn.innerHTML = ICONS.play;
         playBtn.style.color = "var(--purple)";
         playBtn.addEventListener("click", async () => {
           try {
@@ -404,10 +438,21 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         actions.appendChild(playBtn);
 
+        const exportBtn = document.createElement("button");
+        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; exportBtn.innerHTML = ICONS.export;
+        exportBtn.addEventListener("click", () => {
+          const blob = new Blob([JSON.stringify({ [host]: [m] }, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = `shortkeys-mapping-${host}-${(m.label || "mapping").replace(/\s+/g, "-")}.json`;
+          a.click(); URL.revokeObjectURL(url);
+        });
+        actions.appendChild(exportBtn);
+
         const editBtn = document.createElement("button");
         editBtn.className = "btn-icon";
         editBtn.title = "Edit";
-        editBtn.textContent = "✎";
+        editBtn.innerHTML = ICONS.edit;
         editBtn.addEventListener("click", () => {
           openBindBuilder(host, m.key, m.selector, m.label || "", m.timeout || 8000, host, idx);
         });
@@ -416,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const delBtn = document.createElement("button");
         delBtn.className = "btn-icon";
         delBtn.title = "Delete";
-        delBtn.textContent = "✕";
+        delBtn.innerHTML = ICONS.trash;
         delBtn.style.color = "var(--red)";
         delBtn.addEventListener("click", async () => {
           allMappings[host].splice(idx, 1);
@@ -514,8 +559,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function createAddStepButton(index, isLast = false) {
+    const btnContainer = document.createElement("div");
+    btnContainer.className = "add-step-divider" + (isLast ? " permanent" : "");
+    const btn = document.createElement("button");
+    btn.className = "btn-icon add-step-btn";
+    btn.innerHTML = "+ Add Step";
+    btn.addEventListener("click", () => {
+      syncStepInputs();
+      builderSteps.splice(index, 0, { name: "", selector: "", value: "", action: "click", delay: 0 });
+      renderBuilderSteps();
+    });
+    
+    const line = document.createElement("div");
+    line.className = "add-step-line";
+    
+    btnContainer.appendChild(line);
+    btnContainer.appendChild(btn);
+    return btnContainer;
+  }
+
   function renderBuilderSteps() {
     seqStepsList.textContent = "";
+
+    seqStepsList.appendChild(createAddStepButton(0, builderSteps.length === 0));
+
     builderSteps.forEach((st, i) => {
       const actionDef = ACTION_TYPES.find(a => a.id === (st.action || "click")) || ACTION_TYPES[0];
       const card = document.createElement("div");
@@ -568,23 +636,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (i > 0) {
         const upBtn = document.createElement("button");
-        upBtn.className = "btn-icon"; upBtn.title = "Move up"; upBtn.textContent = "↑";
+        upBtn.className = "btn-icon"; upBtn.title = "Move up"; upBtn.innerHTML = ICONS.up;
         upBtn.addEventListener("click", () => { syncStepInputs(); [builderSteps[i - 1], builderSteps[i]] = [builderSteps[i], builderSteps[i - 1]]; renderBuilderSteps(); });
         actions.appendChild(upBtn);
       }
       if (i < builderSteps.length - 1) {
         const downBtn = document.createElement("button");
-        downBtn.className = "btn-icon"; downBtn.title = "Move down"; downBtn.textContent = "↓";
+        downBtn.className = "btn-icon"; downBtn.title = "Move down"; downBtn.innerHTML = ICONS.down;
         downBtn.addEventListener("click", () => { syncStepInputs(); [builderSteps[i], builderSteps[i + 1]] = [builderSteps[i + 1], builderSteps[i]]; renderBuilderSteps(); });
         actions.appendChild(downBtn);
       }
       const dupBtn = document.createElement("button");
-      dupBtn.className = "btn-icon"; dupBtn.title = "Duplicate"; dupBtn.textContent = "⧉";
+      dupBtn.className = "btn-icon"; dupBtn.title = "Duplicate"; dupBtn.innerHTML = ICONS.copy;
       dupBtn.addEventListener("click", () => { syncStepInputs(); builderSteps.splice(i + 1, 0, JSON.parse(JSON.stringify(builderSteps[i]))); renderBuilderSteps(); });
       actions.appendChild(dupBtn);
 
       const delBtn = document.createElement("button");
-      delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.textContent = "✕";
+      delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.innerHTML = ICONS.trash;
       delBtn.style.color = "var(--red)";
       delBtn.addEventListener("click", () => { syncStepInputs(); builderSteps.splice(i, 1); renderBuilderSteps(); });
       actions.appendChild(delBtn);
@@ -636,7 +704,7 @@ document.addEventListener("DOMContentLoaded", () => {
         selRow.appendChild(selInput);
         const pickBtn = document.createElement("button");
         pickBtn.className = "btn btn-secondary btn-xs";
-        pickBtn.textContent = "⊕ Pick";
+        pickBtn.innerHTML = ICONS.pick + " Pick";
         pickBtn.addEventListener("click", async () => {
           syncStepInputs();
           const state = getSeqBuilderState();
@@ -681,12 +749,12 @@ document.addEventListener("DOMContentLoaded", () => {
         delayRow.appendChild(delayLabel);
         const delayInput = document.createElement("input");
         delayInput.type = "number"; delayInput.className = "field-input";
-        delayInput.style.width = "70px"; delayInput.placeholder = "ms";
+        delayInput.style.width = "calc(70px * var(--scale) * var(--font-scale, 1))"; delayInput.placeholder = "ms";
         delayInput.value = st.delay || "";
         delayInput.dataset.i = i; delayInput.dataset.field = "delay";
         delayRow.appendChild(delayInput);
         const delayHint = document.createElement("span");
-        delayHint.style.fontSize = "10px"; delayHint.style.color = "var(--text-dim)";
+        delayHint.style.fontSize = "calc(10px * var(--scale) * var(--font-scale, 1))"; delayHint.style.color = "var(--text-dim)";
         delayHint.textContent = "ms before action";
         delayRow.appendChild(delayHint);
         body.appendChild(delayRow);
@@ -694,6 +762,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       card.appendChild(body);
       seqStepsList.appendChild(card);
+      seqStepsList.appendChild(createAddStepButton(i + 1, i === builderSteps.length - 1));
     });
   }
 
@@ -742,7 +811,10 @@ document.addEventListener("DOMContentLoaded", () => {
       builderSteps = [{ name: "", selector: "", value: "", action: "click", delay: 0 }];
       seqBuilderTitle.textContent = "New Sequence";
       browser.tabs.query({ active: true, currentWindow: true }).then(tabs => {
-        if (tabs[0]?.url) try { seqHostnameInput.value = new URL(tabs[0].url).hostname; } catch (e) {}
+        if (tabs[0]?.url) try {
+          let u = new URL(tabs[0].url);
+          seqHostnameInput.value = u.hostname || 'local';
+        } catch (e) {}
       });
     }
     renderSeqTrigger();
@@ -752,11 +824,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   seqNewBtn.addEventListener("click", () => openSeqBuilder());
   seqBuilderClose.addEventListener("click", () => hideBuilder(seqBuilder, seqList, "#tab-sequences .section-bar"));
-  seqAddStep.addEventListener("click", () => {
-    syncStepInputs();
-    builderSteps.push({ name: "", selector: "", value: "", action: "click", delay: 0 });
-    renderBuilderSteps();
-  });
 
   seqSaveBtn.addEventListener("click", async () => {
     syncStepInputs();
@@ -854,9 +921,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const info = document.createElement("div");
         info.className = "seq-card-info";
-        const name = document.createElement("div");
+        const name = document.createElement("input");
+        name.type = "text";
         name.className = "seq-card-name";
-        name.textContent = seq.name || "Unnamed";
+        name.value = seq.name || "";
+        name.placeholder = "Unnamed";
+        name.style.border = "none";
+        name.style.background = "transparent";
+        name.style.fontFamily = "inherit";
+        name.style.fontSize = "inherit";
+        name.style.fontWeight = "inherit";
+        name.style.color = "inherit";
+        name.style.width = "100%";
+        name.style.outline = "none";
+        name.addEventListener("change", async (e) => {
+          seq.name = e.target.value.trim();
+          await browser.storage.local.set({ [SEQ_STORAGE_KEY]: allSequences });
+        });
         info.appendChild(name);
         const meta = document.createElement("div");
         meta.className = "seq-card-meta";
@@ -864,7 +945,7 @@ document.addEventListener("DOMContentLoaded", () => {
         info.appendChild(meta);
         if (seq.trigger) {
           const trig = document.createElement("div");
-          trig.style.marginTop = "4px";
+          trig.style.marginTop = "calc(4px * var(--scale))";
           trig.appendChild(comboBadge(seq.trigger));
           info.appendChild(trig);
         }
@@ -876,7 +957,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const playBtn = document.createElement("button");
         playBtn.className = "btn-icon";
         playBtn.title = "Play";
-        playBtn.textContent = "▶";
+        playBtn.innerHTML = ICONS.play;
         playBtn.style.color = "var(--purple)";
         playBtn.addEventListener("click", async () => {
           try {
@@ -893,7 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(playBtn);
 
         const exportBtn = document.createElement("button");
-        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; exportBtn.textContent = "↓";
+        exportBtn.className = "btn-icon"; exportBtn.title = "Export"; exportBtn.innerHTML = ICONS.export;
         exportBtn.addEventListener("click", () => {
           const blob = new Blob([JSON.stringify({ [host]: [seq] }, null, 2)], { type: "application/json" });
           const url = URL.createObjectURL(blob);
@@ -904,12 +985,12 @@ document.addEventListener("DOMContentLoaded", () => {
         actions.appendChild(exportBtn);
 
         const editBtn = document.createElement("button");
-        editBtn.className = "btn-icon"; editBtn.title = "Edit"; editBtn.textContent = "✎";
+        editBtn.className = "btn-icon"; editBtn.title = "Edit"; editBtn.innerHTML = ICONS.edit;
         editBtn.addEventListener("click", () => openSeqBuilder(host, idx));
         actions.appendChild(editBtn);
 
         const delBtn = document.createElement("button");
-        delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.textContent = "✕";
+        delBtn.className = "btn-icon"; delBtn.title = "Delete"; delBtn.innerHTML = ICONS.trash;
         delBtn.style.color = "var(--red)";
         delBtn.addEventListener("click", async () => {
           allSequences[host].splice(idx, 1);
@@ -1032,7 +1113,29 @@ document.addEventListener("DOMContentLoaded", () => {
       reader.onload = async (evt) => {
         try {
           const data = JSON.parse(evt.target.result);
-          await browser.storage.local.set(data);
+          
+          if (data[SEQ_STORAGE_KEY]) {
+            for (const host in data[SEQ_STORAGE_KEY]) {
+              if (!allSequences[host]) allSequences[host] = [];
+              allSequences[host] = allSequences[host].concat(data[SEQ_STORAGE_KEY][host]);
+            }
+            await browser.storage.local.set({ [SEQ_STORAGE_KEY]: allSequences });
+            delete data[SEQ_STORAGE_KEY];
+          }
+          
+          for (const key in data) {
+            if (key.startsWith("__shortkeys_")) {
+              await browser.storage.local.set({ [key]: data[key] });
+              continue;
+            }
+            const existing = await browser.storage.local.get(key);
+            let merged = existing[key] || [];
+            if (Array.isArray(data[key])) {
+              merged = merged.concat(data[key]);
+            }
+            await browser.storage.local.set({ [key]: merged });
+          }
+          
           importStatus.textContent = "Import successful!";
           importStatus.style.color = "var(--green)";
           loadMappings();
@@ -1108,30 +1211,82 @@ document.addEventListener("DOMContentLoaded", () => {
       settingsScale.value = settings.hudScale;
       settingsScaleVal.textContent = parseFloat(settings.hudScale).toFixed(1) + "x";
     }
-    applyScale(settings.hudScale || 1.0);
+    if (settings.fontScale && settingsFontScale) {
+      settingsFontScale.value = settings.fontScale;
+      settingsFontScaleVal.textContent = parseFloat(settings.fontScale).toFixed(1) + "x";
+    }
+    if (settings.iconScale && settingsIconScale) {
+      settingsIconScale.value = settings.iconScale;
+      settingsIconScaleVal.textContent = parseFloat(settings.iconScale).toFixed(1) + "x";
+    }
+    applyScale(settings.hudScale || 1.0, settings.fontScale || 1.0, settings.iconScale || 1.0);
   }
 
-  function applyScale(scale) {
-    // We scale the html tag directly using CSS custom property or font-size.
-    document.documentElement.style.fontSize = Math.round(13 * scale) + "px";
+  function applyScale(scale, fontScale = 1.0, iconScale = 1.0) {
+    document.documentElement.style.setProperty('--scale', scale);
+    document.documentElement.style.setProperty('--font-scale', fontScale);
+    document.documentElement.style.setProperty('--icon-scale', iconScale);
   }
 
   async function saveSettings() {
     const s = {
       hudPosition: settingsHudPos.value,
-      hudScale: parseFloat(settingsScale.value)
+      hudScale: parseFloat(settingsScale.value),
+      fontScale: parseFloat(settingsFontScale.value),
+      iconScale: parseFloat(settingsIconScale.value)
     };
     await browser.storage.local.set({ "__shortkeys_settings": s });
   }
 
   if (settingsHudPos) settingsHudPos.addEventListener("change", saveSettings);
+  function updateScales() {
+    applyScale(
+      parseFloat(settingsScale.value),
+      parseFloat(settingsFontScale.value),
+      parseFloat(settingsIconScale.value)
+    );
+  }
+
   if (settingsScale) {
     settingsScale.addEventListener("input", (e) => {
-      const v = parseFloat(e.target.value);
-      settingsScaleVal.textContent = v.toFixed(1) + "x";
-      applyScale(v);
+      settingsScaleVal.textContent = parseFloat(e.target.value).toFixed(1) + "x";
+      updateScales();
     });
     settingsScale.addEventListener("change", saveSettings);
+    
+    const scaleReset = document.getElementById("settings-scale-reset");
+    if (scaleReset) scaleReset.addEventListener("click", () => {
+      settingsScale.value = 1.0; settingsScaleVal.textContent = "1.0x";
+      updateScales(); saveSettings();
+    });
+  }
+
+  if (settingsFontScale) {
+    settingsFontScale.addEventListener("input", (e) => {
+      settingsFontScaleVal.textContent = parseFloat(e.target.value).toFixed(1) + "x";
+      updateScales();
+    });
+    settingsFontScale.addEventListener("change", saveSettings);
+    
+    const fontReset = document.getElementById("settings-font-scale-reset");
+    if (fontReset) fontReset.addEventListener("click", () => {
+      settingsFontScale.value = 1.0; settingsFontScaleVal.textContent = "1.0x";
+      updateScales(); saveSettings();
+    });
+  }
+
+  if (settingsIconScale) {
+    settingsIconScale.addEventListener("input", (e) => {
+      settingsIconScaleVal.textContent = parseFloat(e.target.value).toFixed(1) + "x";
+      updateScales();
+    });
+    settingsIconScale.addEventListener("change", saveSettings);
+    
+    const iconReset = document.getElementById("settings-icon-scale-reset");
+    if (iconReset) iconReset.addEventListener("click", () => {
+      settingsIconScale.value = 1.0; settingsIconScaleVal.textContent = "1.0x";
+      updateScales(); saveSettings();
+    });
   }
 
   async function boot() {

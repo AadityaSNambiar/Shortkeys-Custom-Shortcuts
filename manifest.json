@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Shortkeys",
-  "version": "1.2",
+  "version": "1.3",
   "description": "Map keyboard keys to click buttons on specific websites. Set per-site keybindings that trigger element clicks.",
   "permissions": [
     "contextMenus",
@@ -23,7 +23,9 @@
       "js": [
         "content-script.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "browser_action": {
@@ -39,7 +41,7 @@
   "commands": {
     "_execute_browser_action": {
       "suggested_key": {
-        "default": "Ctrl+Shift+Y",
+        "default": "Ctrl+E",
         "mac": "Command+Shift+Y"
       },
       "description": "Open Shortkeys popup"
