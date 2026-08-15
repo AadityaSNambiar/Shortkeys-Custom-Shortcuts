@@ -242,6 +242,19 @@ function stopPicker() {
   document.removeEventListener("keydown", keydownPickerHandler, true);
 }
 
+// ─── Binding Execution Helper ────────────────────────────────────
+
+function executeBinding(binding) {
+  waitForElement(binding.selector, binding.timeout || 8000).then((el) => {
+    if (el) {
+      showExecutionHUD(`Binding: ${binding.label || binding.key}`, binding.selector);
+      simulateSolidClick(el);
+    } else {
+      showExecutionHUD(`Binding Failed`, `Element not found: ${binding.selector}`);
+    }
+  });
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message.action === "startPicker") {
     isPicking = true;
@@ -267,6 +280,15 @@ browser.runtime.onMessage.addListener((message) => {
   }
   if (message.action === "showCaptureOverlay") {
     showCaptureOverlay(message.selector, message.elName, message.hostname);
+    return Promise.resolve({ success: true });
+  }
+  if (message.action === "executeShortcutFromBackground") {
+    const { mapping, mappingType } = message;
+    if (mappingType === "binding") {
+      executeBinding(mapping);
+    } else if (mappingType === "sequence") {
+      runSequence(mapping, 0);
+    }
     return Promise.resolve({ success: true });
   }
 });
@@ -492,92 +514,34 @@ document.addEventListener("keydown", async (e) => {
 
   try {
     const data = await browser.storage.local.get([host, "__shortkeys_sequences__"]);
-
-    // Collect ALL candidates matching this combo on this host
-    const candidates = [];
-
-    // Single bindings
     const mappings = data[host] || [];
-    for (const m of mappings) {
-      if (m.key === combo) {
-        candidates.push({
-          type: "binding",
-          selector: m.selector,
-          timeout: m.timeout || 8000,
-          binding: m
-        });
-      }
-    }
-
-    // Sequences
     const allSeq = data["__shortkeys_sequences__"] || {};
     const hostSeq = allSeq[host] || [];
+
+    // Check bindings
+    for (const m of mappings) {
+      if (m.key === combo) {
+        // Execute the binding
+        executeBinding(m);
+        return; // prevent further propagation
+      }
+    }
+
+    // Check sequences
     for (const seq of hostSeq) {
       if (seq.trigger === combo) {
-        // Use the first step's selector to check availability
-        const firstStepSelector = seq.steps?.[0]?.selector;
-        const firstStepAction = seq.steps?.[0]?.action;
-        // wait/navigate steps don't need a selector check
-        const needsSelector = firstStepSelector && !["wait", "navigate"].includes(firstStepAction);
-        candidates.push({
-          type: "sequence",
-          selector: needsSelector ? firstStepSelector : null,
-          timeout: seq.timeout || 8000,
-          sequence: seq
-        });
+        // Execute the sequence
+        runSequence(seq, 0);
+        return; // prevent further propagation
       }
     }
 
-    if (!candidates.length) return;
-    e.preventDefault();
-    e.stopPropagation();
+    // If not found locally, send a message to the background script to handle cross-page
+    browser.runtime.sendMessage({
+      action: "executeShortcutCrossPage",
+      combo: combo
+    });
 
-    // Try to find a candidate whose element is immediately available
-    let fired = false;
-    for (const c of candidates) {
-      if (!c.selector) {
-        // No selector to check (e.g. sequence starting with wait/navigate)
-        if (c.type === "sequence") runSequence(c.sequence, 0);
-        fired = true;
-        break;
-      }
-      const el = querySelectorDeep(c.selector);
-      if (el) {
-        if (c.type === "binding") {
-          showExecutionHUD(`Binding: ${c.binding.label || c.binding.key}`, c.selector);
-          simulateSolidClick(el);
-        } else {
-          runSequence(c.sequence, 0);
-        }
-        fired = true;
-        break;
-      }
-    }
-
-    // If nothing fired immediately, poll until one becomes available or timeout
-    if (!fired) {
-      const maxTimeout = Math.max(...candidates.map(c => c.timeout || 8000));
-      const start = Date.now();
-      const poll = setInterval(() => {
-        for (const c of candidates) {
-          if (!c.selector) continue;
-          const el = querySelectorDeep(c.selector);
-          if (el) {
-            clearInterval(poll);
-            if (c.type === "binding") {
-              showExecutionHUD(`Binding: ${c.binding.label || c.binding.key}`, c.selector);
-              simulateSolidClick(el);
-            }
-            else runSequence(c.sequence, 0);
-            return;
-          }
-        }
-        if (Date.now() - start > maxTimeout) {
-          clearInterval(poll);
-          console.warn("Shortkeys: No matching element found within timeout for combo:", combo);
-        }
-      }, 300);
-    }
   } catch (err) {
     console.error("Shortkeys Error:", err);
   }
